@@ -1,0 +1,73 @@
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Dependencies (ALL folders)
+# =========================
+node_modules/
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.local
+.env.*
+!.env.example
+
+# =========================
+# Next.js (client)
+# =========================
+.next/
+out/
+build/
+.next-cache/
+
+# =========================
+# Logs
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Package managers
+# =========================
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# =========================
+# Vercel
+# =========================
+.vercel
+
+# =========================
+# TypeScript
+# =========================
+*.tsbuildinfo
+next-env.d.ts
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Build outputs
+# =========================
+dist/
+coverage/
+
+# =========================
+# Misc
+# =========================
+*.pem
