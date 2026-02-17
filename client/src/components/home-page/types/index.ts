@@ -7,7 +7,12 @@ export type Expense = {
   note?: string;
   date: string;
   type: 'expense' | 'income';
+
   recurring?: boolean;
+
+  paymentMethod?: 'gpay' | 'phonepe' | 'paytm' | null;
+
+  paymentId?: string | null;
 };
 
 export type FormData = {
@@ -16,5 +21,8 @@ export type FormData = {
   note: string;
   date: string;
   type: 'expense' | 'income';
+
   recurring?: boolean;
+
+  paymentMethod?: 'gpay' | 'phonepe' | 'paytm' | null;
 };

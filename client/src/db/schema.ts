@@ -10,8 +10,15 @@ import {
   timestamp,
   varchar,
   uuid,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 
+export const paymentMethodEnum = pgEnum("payment_method_enum", [
+  "gpay",
+  "phonepe",
+  "paytm",
+]);
+  
 /* =========================================================
    AUTH TABLES (NextAuth owns these)
 ========================================================= */
@@ -127,13 +134,22 @@ export const transactions = pgTable("transactions", {
     .notNull()
     .references(() => categories.id),
 
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 })
+    .$type<number>()   
+    .notNull(),
 
-  type: varchar("type", { length: 20 }).notNull(), // expense | income
+  type: varchar("type", { length: 20 }).notNull(),
+
   note: text("note"),
 
-  transactionDate: date("transaction_date").notNull(),
+  transactionDate: date("transaction_date", { mode: "date" }).notNull(),
+
   isRecurring: boolean("is_recurring").default(false),
+
+  // ✅ ADD THESE TWO
+  paymentMethod: paymentMethodEnum("payment_method"),
+  paymentId: varchar("payment_id", { length: 255 }),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+

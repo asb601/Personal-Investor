@@ -13,7 +13,7 @@ export async function addTransaction(data: {
   note?: string;
   date: string;
   isRecurring?: boolean;   
-  paymentMethod?: string;
+  paymentMethod?: 'gpay' | 'phonepe' | 'paytm';
   paymentId?: string;
 
 }) {
