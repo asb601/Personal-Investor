@@ -1,10 +1,9 @@
 type Props = {
   onPay: (method: 'gpay' | 'phonepe' | 'paytm') => void;
-  onMarkAsPaid: () => void;
   onClose: () => void;
 };
 
-export function PaymentModal({ onPay, onMarkAsPaid, onClose }: Props) {
+export function PaymentModal({ onPay, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card p-6 rounded-xl w-full max-w-sm">
@@ -34,13 +33,8 @@ export function PaymentModal({ onPay, onMarkAsPaid, onClose }: Props) {
           </button>
         </div>
 
-        {/* Mark as Paid */}
-        <button
-          onClick={onMarkAsPaid}
-          className="mt-4 w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold"
-        >
-          Mark as Paid
-        </button>
+
+      
 
         <button
           onClick={onClose}

@@ -123,28 +123,28 @@ export default function HomePage() {
     });
   };
 
-  const handlePay = (method: 'gpay' | 'phonepe' | 'paytm') => {
-    if (!formData.amount) {
-      alert('Enter amount first');
-      return;
-    }
+ const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
 
-    setSelectedPaymentMethod(method);
+  if (!formData.amount) {
+    alert('Enter amount first');
+    return;
+  }
 
-    const upiId = 'merchant@upi';
-    const name = 'Merchant';
-    const amount = formData.amount;
-    const note = formData.note || formData.category;
-    const upiLink = `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+  const upiId = 'merchant@upi';
+  const name = 'Merchant';
+  const amount = formData.amount;
+  const note = formData.note || formData.category;
 
-    setShowPaymentModal(false);
-    window.location.href = upiLink;
-  };
+  // STEP 1: save transaction first
+  await markAsPaid(formData, method);
 
-  const handleMarkAsPaid = async () => {
-    await markAsPaid(formData, selectedPaymentMethod);
-    setShowAddModal(false);
-  };
+  // STEP 2: generate UPI link
+  const upiLink =
+    `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+
+  // STEP 3: open UPI app
+  window.location.href = upiLink;
+};
 
   /* =======================
      Render
@@ -223,7 +223,6 @@ export default function HomePage() {
       {showPaymentModal && (
         <PaymentModal
           onPay={handlePay}
-          onMarkAsPaid={handleMarkAsPaid}
           onClose={() => setShowPaymentModal(false)}
         />
       )}
