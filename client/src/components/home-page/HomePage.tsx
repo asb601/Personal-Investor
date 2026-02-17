@@ -135,15 +135,15 @@ export default function HomePage() {
   const amount = formData.amount;
   const note = formData.note || formData.category;
 
-  // STEP 1: save transaction first
   await markAsPaid(formData, method);
 
-  // STEP 2: generate UPI link
-  const upiLink =
-    `upi://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+  const upiLinks = {
+    gpay: `tez://upi/pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
+    phonepe: `phonepe://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
+    paytm: `paytmmp://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
+  };
 
-  // STEP 3: open UPI app
-  window.location.href = upiLink;
+  window.location.href = upiLinks[method];
 };
 
   /* =======================
