@@ -1,52 +1,49 @@
-'use server';
+// POST to FastAPI create-transaction endpoint
 
-import { db } from "@/db";
-import { transactions } from "@/db/schema";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function addTransaction(data: {
-
   categoryId: number;
   amount: number;
   type: "expense" | "income";
   note?: string;
   date: string;
-  isRecurring?: boolean;   
+  isRecurring?: boolean;
   paymentMethod?: 'gpay' | 'phonepe' | 'paytm';
   paymentId?: string;
-
+  paymentStatus?: 'pending' | 'confirmed';
 }) {
-
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    throw new Error("Not authenticated");
-  }
-
-  const result = await db.insert(transactions)
-    .values({
-
-      authUserId: session.user.id,
-
+  const res = await fetch(`${API_URL}/transactions`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
       categoryId: data.categoryId,
-
       amount: data.amount,
-
       type: data.type,
-
       note: data.note,
-
-      transactionDate: new Date(data.date),
-
+      date: data.date,
+      isRecurring: data.isRecurring,
       paymentMethod: data.paymentMethod,
-
       paymentId: data.paymentId,
+      paymentStatus: data.paymentStatus ?? 'confirmed',
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`failed to add transaction: ${res.status}`);
+  }
+  return res.json();
+}
 
-      isRecurring: data.isRecurring ?? false,
-    })
-    .returning();
-
-  return result[0];
-
+export async function confirmTransaction(id: number) {
+  const res = await fetch(`${API_URL}/transactions/${id}/confirm`, {
+    method: "PATCH",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`failed to confirm transaction: ${res.status}`);
+  }
+  return res.json();
 }

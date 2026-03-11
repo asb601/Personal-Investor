@@ -1,9 +1,11 @@
 import { useRef, useState, useEffect } from 'react';
 import { Wallet, ChevronDown } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +48,7 @@ export function Header() {
         {/* Profile + Dropdown */}
         <div ref={menuRef} className="relative flex items-center gap-2">
           <img
-            src={session?.user?.image ?? '/avatar.png'}
+            src={user?.avatar ?? '/avatar.png'}
             alt="profile"
             className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-border"
           />
@@ -79,7 +81,10 @@ export function Header() {
               </button>
 
               <button
-                onClick={() => signOut({ callbackUrl: '/' })}
+                onClick={() => {
+                  logout();
+                  router.push('/');
+                }}
                 className="w-full text-left px-4 py-2 text-sm hover:bg-accent text-destructive"
               >
                 Logout

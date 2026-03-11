@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import React from 'react'
 import { useScroll, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
 
 const menuItems: { name: string; href: string }[] = []
 
@@ -12,6 +13,7 @@ export const HeroHeader = () => {
     const [menuState, setMenuState] = React.useState(false)
     const [scrolled, setScrolled] = React.useState(false)
     const { scrollYProgress } = useScroll()
+    const { user, loading } = useAuth()
 
     React.useEffect(() => {
         const unsubscribe = scrollYProgress.on('change', (latest) => {
@@ -101,13 +103,21 @@ export const HeroHeader = () => {
                                     ))}
                                 </ul>
                             </div>
-                            
+
                             <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                                <Link 
-                                    href="/login" 
-                                    className="text-lg font-bold hover:text-primary transition-colors duration-300">
-                                    Login
-                                </Link>
+                                {!loading && user ? (
+                                    <Link
+                                        href="/home"
+                                        className="text-lg font-bold hover:text-primary transition-colors duration-300">
+                                        Dashboard
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/login"
+                                        className="text-lg font-bold hover:text-primary transition-colors duration-300">
+                                        Login
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </motion.div>

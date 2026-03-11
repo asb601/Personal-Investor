@@ -1,21 +1,14 @@
-'use server';
+// Fetch all transactions for the authenticated user.
+// The backend determines identity from the cookie.
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
-import { db } from "@/db";
-import { transactions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function getTransactions(userId: string) {
-
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    throw new Error("Not authenticated");
-  }
-
-  return await db.query.transactions.findMany({
-    where: eq(transactions.authUserId, userId),
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+export async function getTransactions() {
+  const res = await fetch(`${API_URL}/transactions`, {
+    credentials: "include",
   });
+  if (!res.ok) {
+    throw new Error(`failed to fetch transactions: ${res.status}`);
+  }
+  return res.json();
 }

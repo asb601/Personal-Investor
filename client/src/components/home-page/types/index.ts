@@ -1,5 +1,7 @@
 import type { CategoryName } from '@/lib/category-meta';
 
+export type PaymentStatus = 'pending' | 'confirmed';
+
 export type Expense = {
   id: number;
   amount: number;
@@ -13,6 +15,8 @@ export type Expense = {
   paymentMethod?: 'gpay' | 'phonepe' | 'paytm' | null;
 
   paymentId?: string | null;
+
+  paymentStatus: PaymentStatus;
 };
 
 export type FormData = {

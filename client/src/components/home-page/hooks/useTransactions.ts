@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+// session state is now managed by our FastAPI backend; read token/user from
+// localStorage (or via the Auth context).
+import { useAuth } from '@/lib/auth';
 import { CATEGORY_ID_MAP } from '@/lib/category-map-id';
 import type { CategoryName } from '@/lib/category-meta';
-import { addTransaction } from '@/actions/transactions';
+import { addTransaction, confirmTransaction } from '@/actions/transactions';
 import { deleteTransaction } from '@/actions/delete-transaction';
 import { getTransactions } from '@/actions/get-transactions';
 import type { Expense, FormData } from '@/components/home-page/types';
 
 export function useTransactions() {
 
-  const { data: session } = useSession();
+  const { user } = useAuth();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
@@ -21,13 +23,13 @@ export function useTransactions() {
 
   useEffect(() => {
 
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
 
     const loadTransactions = async () => {
 
       try {
 
-        const data = await getTransactions(session.user.id);
+        const data = await getTransactions();
 
         const mapped: Expense[] = data.map((t: any) => {
 
@@ -36,6 +38,17 @@ export function useTransactions() {
               (key) =>
                 CATEGORY_ID_MAP[key as CategoryName] === t.categoryId
             ) as CategoryName) ?? 'Food';
+
+          // backend returns the date field as `date`, not `transactionDate`
+          // (it comes from TransactionOut).  guard against invalid strings
+          // so that new Date(...) doesn't blow up.
+          let isoDate = '';
+          if (t.date) {
+            const d = new Date(t.date);
+            if (!isNaN(d.getTime())) {
+              isoDate = d.toISOString();
+            }
+          }
 
           return {
 
@@ -47,7 +60,7 @@ export function useTransactions() {
 
             note: t.note ?? '',
 
-            date: new Date(t.transactionDate).toISOString(),
+            date: isoDate,
 
             type: t.type as 'expense' | 'income',
 
@@ -56,6 +69,8 @@ export function useTransactions() {
             paymentMethod: t.paymentMethod ?? null,
 
             paymentId: t.paymentId ?? null,
+
+            paymentStatus: t.paymentStatus ?? 'confirmed',
 
           };
 
@@ -73,7 +88,7 @@ export function useTransactions() {
 
     loadTransactions();
 
-  }, [session?.user?.id]);
+  }, [user?.id]);
 
 
   /* =========================
@@ -85,51 +100,40 @@ export function useTransactions() {
     onSuccess: (expense: Expense) => void
   ) => {
 
-    if (!session?.user?.id) {
-
+    if (!user?.id) {
       alert('Not authenticated');
       return;
-
     }
 
     try {
 
       const inserted = await addTransaction({
-
         categoryId: CATEGORY_ID_MAP[formData.category],
-
         amount: parseFloat(formData.amount),
-
         type: formData.type,
-
         note: formData.note,
-
         date: formData.date,
-
         isRecurring: Boolean(formData.recurring),
-
+        paymentStatus: 'confirmed',
       });
 
+      // convert server-provided date to ISO string safely
+      const isoDate = (() => {
+        const d = new Date(inserted.date);
+        return isNaN(d.getTime()) ? '' : d.toISOString();
+      })();
+
       const newExpense: Expense = {
-
         id: inserted.id,
-
         amount: Number(inserted.amount),
-
         category: formData.category,
-
         note: inserted.note ?? '',
-
-        date: new Date(inserted.transactionDate).toISOString(),
-
+        date: isoDate,
         type: inserted.type as 'expense' | 'income',
-
         recurring: inserted.isRecurring ?? false,
-
         paymentMethod: inserted.paymentMethod ?? null,
-
         paymentId: inserted.paymentId ?? null,
-
+        paymentStatus: inserted.paymentStatus ?? 'confirmed',
       };
 
       setExpenses(prev => [newExpense, ...prev]);
@@ -164,45 +168,31 @@ export function useTransactions() {
     try {
 
       const inserted = await addTransaction({
-
         categoryId: CATEGORY_ID_MAP[formData.category],
-
         amount: parseFloat(formData.amount),
-
         type: formData.type,
-
         note: formData.note,
-
         date: formData.date,
-
         paymentMethod: selectedPaymentMethod,
-
-        paymentId: crypto.randomUUID(), // optional unique reference
-
+        paymentId: crypto.randomUUID(),
         isRecurring: Boolean(formData.recurring),
-
+        paymentStatus: 'pending',
       });
 
       const newExpense: Expense = {
-
         id: inserted.id,
-
         amount: Number(inserted.amount),
-
         category: formData.category,
-
         note: inserted.note ?? '',
-
-        date: new Date(inserted.transactionDate).toISOString(),
-
+        date: ((): string => {
+          const d = new Date(inserted.date);
+          return isNaN(d.getTime()) ? '' : d.toISOString();
+        })(),
         type: inserted.type as 'expense' | 'income',
-
         recurring: inserted.isRecurring ?? false,
-
         paymentMethod: inserted.paymentMethod ?? null,
-
         paymentId: inserted.paymentId ?? null,
-
+        paymentStatus: inserted.paymentStatus ?? 'pending',
       };
 
       setExpenses(prev => [newExpense, ...prev]);
@@ -240,6 +230,22 @@ export function useTransactions() {
 
 
   /* =========================
+     CONFIRM PAYMENT
+  ========================= */
+
+  const confirmExpense = async (id: number) => {
+    try {
+      await confirmTransaction(id);
+      setExpenses(prev =>
+        prev.map(e => e.id === id ? { ...e, paymentStatus: 'confirmed' as const } : e)
+      );
+    } catch (error) {
+      console.error('Confirm failed:', error);
+    }
+  };
+
+
+  /* =========================
      RETURN
   ========================= */
 
@@ -252,6 +258,8 @@ export function useTransactions() {
     deleteExpense,
 
     markAsPaid,
+
+    confirmExpense,
 
   };
 

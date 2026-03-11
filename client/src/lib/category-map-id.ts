@@ -13,6 +13,3 @@ export const CATEGORY_DATA = [
 export const CATEGORY_ID_MAP = Object.fromEntries(
   CATEGORY_DATA.map(c => [c.name, c.id])
 ) as Record<typeof CATEGORY_DATA[number]["name"], number>;
-
-
-export type CategoryName = typeof CATEGORY_DATA[number]["name"];

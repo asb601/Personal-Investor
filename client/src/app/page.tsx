@@ -1,6 +1,5 @@
 
 import HeroSection from "@/components/hero-page/hero-section";
-import { Feature } from "motion";
 
 export default function HomePage() {
   return (

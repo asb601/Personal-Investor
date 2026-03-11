@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+// session handled by FastAPI; local storage or context used instead
+import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { CATEGORY_META } from '@/lib/category-meta';
 import type { CategoryName } from '@/lib/category-meta';
@@ -41,9 +42,9 @@ const incomeCategories = Object.entries(CATEGORY_META)
 ======================= */
 
 export default function HomePage() {
-  const { status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const { expenses, addExpense, deleteExpense, markAsPaid } = useTransactions();
+  const { expenses, addExpense, deleteExpense, markAsPaid, confirmExpense } = useTransactions();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -65,16 +66,19 @@ export default function HomePage() {
   });
 
   /* =======================
-     Session Guard
+     Session Guard (client-side)
+     we no longer rely on next-auth; authentication state is stored in
+     localStorage by the login page and exposed via `useAuth`.
   ======================= */
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !user) {
       router.replace('/login');
     }
-  }, [status, router]);
+  }, [user, loading, router]);
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (loading || !user) {
+    // show a spinner while we're determining authentication status
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -123,28 +127,28 @@ export default function HomePage() {
     });
   };
 
- const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
+const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
+    if (!formData.amount) {
+      alert('Enter amount first');
+      return;
+    }
 
-  if (!formData.amount) {
-    alert('Enter amount first');
-    return;
-  }
+    setSelectedPaymentMethod(method);
 
-  const upiId = 'merchant@upi';
-  const name = 'Merchant';
-  const amount = formData.amount;
-  const note = formData.note || formData.category;
+    // Record the transaction as pending
+    await markAsPaid(formData, method);
 
-  await markAsPaid(formData, method);
-
-  const upiLinks = {
-    gpay: `tez://upi/pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
-    phonepe: `phonepe://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
-    paytm: `paytmmp://pay?pa=${upiId}&pn=${name}&am=${amount}&cu=INR&tn=${note}`,
+    // Reset form & close modals
+    setFormData({
+      amount: '',
+      category: 'Food',
+      note: '',
+      date: new Date().toISOString().split('T')[0],
+      type: formData.type,
+    });
+    setShowPaymentModal(false);
+    setShowAddModal(false);
   };
-
-  window.location.href = upiLinks[method];
-};
 
   /* =======================
      Render
@@ -196,6 +200,7 @@ export default function HomePage() {
           setFilter={setFilter}
           categories={categories}
           onDelete={deleteExpense}
+          onConfirm={confirmExpense}
         />
 
       </div>
@@ -222,6 +227,7 @@ export default function HomePage() {
 
       {showPaymentModal && (
         <PaymentModal
+          amount={formData.amount}
           onPay={handlePay}
           onClose={() => setShowPaymentModal(false)}
         />
