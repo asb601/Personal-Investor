@@ -8,7 +8,7 @@ Thumbs.db
 # Dependencies (ALL folders)
 # =========================
 node_modules/
-
+*.md
 # =========================
 # Environment files
 # =========================

@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy import (
     String,
     Boolean,
+    Integer,
     Date,
     Numeric,
     DateTime,
@@ -75,6 +76,13 @@ class Transaction(Base):
         server_default="manual",
     )
 
+    card_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -82,3 +90,4 @@ class Transaction(Base):
 
     user: Mapped["User"] = relationship(back_populates="transactions")
     category: Mapped["Category"] = relationship(back_populates="transactions")
+    card = relationship("Card", back_populates="transactions")

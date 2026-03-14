@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, CalendarDays, X, Download, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_META } from '@/lib/category-meta';
@@ -16,6 +16,7 @@ import { PaymentModal } from './components/PaymentModal';
 import { ImportModal } from './components/ImportModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { getCards, type CardData } from '@/actions/cards';
 
 /* =======================
    Derived category lists
@@ -61,6 +62,11 @@ function formatDateLabel(ymd: string) {
 
 export default function HomePage() {
   const { expenses, addExpense, deleteExpense, markAsPaid, confirmExpense, bulkImport } = useTransactions();
+
+  const [cards, setCards] = useState<CardData[]>([]);
+  useEffect(() => {
+    getCards().then(setCards).catch(console.error);
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -349,6 +355,7 @@ export default function HomePage() {
           onPayNow={() => setShowPaymentModal(true)}
           categories={categories}
           incomeCategories={incomeCategories}
+          cards={cards}
         />
       )}
 

@@ -17,6 +17,8 @@ export type Expense = {
   paymentId?: string | null;
 
   paymentStatus: PaymentStatus;
+
+  cardId?: number | null;
 };
 
 export type FormData = {
@@ -29,4 +31,6 @@ export type FormData = {
   recurring?: boolean;
 
   paymentMethod?: 'gpay' | 'phonepe' | 'paytm' | null;
+
+  cardId?: number | null;
 };

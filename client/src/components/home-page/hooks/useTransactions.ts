@@ -73,6 +73,8 @@ export function useTransactions() {
 
             paymentStatus: t.paymentStatus ?? 'confirmed',
 
+            cardId: t.cardId ?? null,
+
           };
 
         });
@@ -116,6 +118,7 @@ export function useTransactions() {
         date: formData.date,
         isRecurring: Boolean(formData.recurring),
         paymentStatus: 'confirmed',
+        cardId: formData.cardId ?? null,
       });
 
       // convert server-provided date to ISO string safely
@@ -135,6 +138,7 @@ export function useTransactions() {
         paymentMethod: inserted.paymentMethod ?? null,
         paymentId: inserted.paymentId ?? null,
         paymentStatus: inserted.paymentStatus ?? 'confirmed',
+        cardId: inserted.cardId ?? null,
       };
 
       setExpenses(prev => [newExpense, ...prev]);
@@ -178,6 +182,7 @@ export function useTransactions() {
         paymentId: crypto.randomUUID(),
         isRecurring: Boolean(formData.recurring),
         paymentStatus: 'pending',
+        cardId: formData.cardId ?? null,
       });
 
       const newExpense: Expense = {
@@ -194,6 +199,7 @@ export function useTransactions() {
         paymentMethod: inserted.paymentMethod ?? null,
         paymentId: inserted.paymentId ?? null,
         paymentStatus: inserted.paymentStatus ?? 'pending',
+        cardId: inserted.cardId ?? null,
       };
 
       setExpenses(prev => [newExpense, ...prev]);

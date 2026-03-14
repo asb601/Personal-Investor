@@ -1,6 +1,7 @@
-import { X } from 'lucide-react';
+import { X, CreditCard } from 'lucide-react';
 import type { FormData } from '../types';
 import type { CategoryName } from '@/lib/category-meta';
+import type { CardData } from '@/actions/cards';
 
 type CategoryMeta = {
   name: CategoryName;
@@ -16,6 +17,7 @@ type Props = {
   onPayNow: () => void;
   categories: CategoryMeta[];
   incomeCategories: CategoryMeta[];
+  cards?: CardData[];
 };
 
 export function AddTransactionModal({
@@ -26,6 +28,7 @@ export function AddTransactionModal({
   onPayNow,
   categories,
   incomeCategories,
+  cards = [],
 }: Props) {
   return (
     <div
@@ -128,6 +131,30 @@ export function AddTransactionModal({
               className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs"
             />
           </div>
+
+          {/* Card selector (expense only) */}
+          {formData.type === 'expense' && cards.length > 0 && (
+            <div>
+              <label className="text-[10px] text-muted-foreground mb-1 block">Paid with Card</label>
+              <select
+                value={formData.cardId ?? ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    cardId: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-xs"
+              >
+                <option value="">No card (cash / UPI)</option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.bank}){c.lastFour ? ` ••${c.lastFour}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
         </div>
 
