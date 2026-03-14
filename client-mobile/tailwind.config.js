@@ -1,0 +1,45 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  presets: [require('nativewind/preset')],
+  content: ['./App.tsx', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        background: '#050505',
+        foreground: '#f4f4f5',
+        card: '#0b0b0f',
+        'card-foreground': '#f8fafc',
+        popover: '#111113',
+        'popover-foreground': '#f8fafc',
+        primary: '#1c1c20',
+        'primary-foreground': '#f8fafc',
+        secondary: '#000000',
+        'secondary-foreground': '#f8fafc',
+        muted: '#27272a',
+        'muted-foreground': '#a1a1aa',
+        accent: '#1f1f23',
+        'accent-foreground': '#f4f4f5',
+        destructive: '#f87171',
+        'destructive-foreground': '#f8fafc',
+        border: '#27272a',
+        input: '#27272a',
+        ring: '#4c4c55',
+        'chart-1': '#6366f1',
+        'chart-2': '#8b5cf6',
+        'chart-3': '#ec4899',
+        'chart-4': '#f97316',
+        'chart-5': '#22d3ee',
+      },
+      fontFamily: {
+        sans: ['Geist', 'System'],
+        mono: ['Geist Mono', 'Menlo'],
+      },
+      borderRadius: {
+        lg: 20,
+        md: 16,
+        sm: 12,
+      },
+    },
+  },
+  plugins: [],
+};

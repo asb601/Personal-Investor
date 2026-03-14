@@ -197,3 +197,83 @@ def confirm_transaction(
         payment_id=row.payment_id,
         payment_status=row.payment_status.value,
     )
+
+
+# ---------------------------------------------------------------------------
+# Bulk import
+# ---------------------------------------------------------------------------
+
+class BulkTransactionItem(_CamelModel):
+    category_id: int
+    amount: Decimal = Field(max_digits=12, decimal_places=2)
+    type: Literal["expense", "income"]
+    note: str | None = None
+    date: date
+    is_recurring: bool = False
+    payment_status: Literal["pending", "confirmed", "manual"] = "confirmed"
+
+
+class BulkImportRequest(_CamelModel):
+    transactions: list[BulkTransactionItem]
+
+
+@router.post("/bulk", response_model=list[TransactionOut], status_code=201)
+def bulk_import_transactions(
+    payload: BulkImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[TransactionOut]:
+    """Import multiple transactions at once (e.g. from a bank statement)."""
+    from src.models.cashflow.category import Category
+
+    # Validate all category_ids upfront
+    valid_cat_ids = {c.id for c in db.query(Category.id).all()}
+    invalid = [
+        t.category_id for t in payload.transactions if t.category_id not in valid_cat_ids
+    ]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category_ids: {invalid}",
+        )
+
+    created = []
+    for tx in payload.transactions:
+        new = Transaction(
+            auth_user_id=current_user.id,
+            category_id=tx.category_id,
+            amount=tx.amount,
+            type=tx.type,
+            note=tx.note,
+            transaction_date=tx.date,
+            is_recurring=tx.is_recurring,
+            payment_status=tx.payment_status,
+        )
+        db.add(new)
+        created.append(new)
+
+    db.commit()
+    for row in created:
+        db.refresh(row)
+
+    logger.info(
+        "Bulk-imported %d transactions for user %s",
+        len(created),
+        current_user.id,
+    )
+
+    return [
+        TransactionOut(
+            id=r.id,
+            category_id=r.category_id,
+            amount=r.amount,
+            type=r.type,
+            note=r.note,
+            date=r.transaction_date,
+            is_recurring=r.is_recurring,
+            payment_method=r.payment_method.value if r.payment_method else None,
+            payment_id=r.payment_id,
+            payment_status=r.payment_status.value,
+        )
+        for r in created
+    ]

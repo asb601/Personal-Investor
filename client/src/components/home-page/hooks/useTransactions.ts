@@ -9,6 +9,7 @@ import type { CategoryName } from '@/lib/category-meta';
 import { addTransaction, confirmTransaction } from '@/actions/transactions';
 import { deleteTransaction } from '@/actions/delete-transaction';
 import { getTransactions } from '@/actions/get-transactions';
+import { bulkImportTransactions } from '@/actions/bulk-import';
 import type { Expense, FormData } from '@/components/home-page/types';
 
 export function useTransactions() {
@@ -246,6 +247,53 @@ export function useTransactions() {
 
 
   /* =========================
+     BULK IMPORT
+  ========================= */
+
+  const bulkImport = async (
+    rows: { date: string; amount: number; type: 'expense' | 'income'; category: CategoryName; note: string }[]
+  ) => {
+    if (!user?.id) {
+      throw new Error('Not authenticated');
+    }
+
+    const payload = rows.map((r) => ({
+      categoryId: CATEGORY_ID_MAP[r.category],
+      amount: r.amount,
+      type: r.type,
+      note: r.note || undefined,
+      date: r.date,
+      paymentStatus: 'confirmed' as const,
+    }));
+
+    const results = await bulkImportTransactions(payload);
+
+    const newExpenses: Expense[] = results.map((t: any, i: number) => {
+      let isoDate = '';
+      if (t.date) {
+        const d = new Date(t.date);
+        if (!isNaN(d.getTime())) isoDate = d.toISOString();
+      }
+
+      return {
+        id: t.id,
+        amount: Number(t.amount),
+        category: rows[i].category,
+        note: t.note ?? '',
+        date: isoDate,
+        type: t.type as 'expense' | 'income',
+        recurring: t.isRecurring ?? false,
+        paymentMethod: t.paymentMethod ?? null,
+        paymentId: t.paymentId ?? null,
+        paymentStatus: t.paymentStatus ?? 'confirmed',
+      };
+    });
+
+    setExpenses(prev => [...newExpenses, ...prev]);
+  };
+
+
+  /* =========================
      RETURN
   ========================= */
 
@@ -260,6 +308,8 @@ export function useTransactions() {
     markAsPaid,
 
     confirmExpense,
+
+    bulkImport,
 
   };
 

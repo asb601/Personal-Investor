@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
-// session handled by FastAPI; local storage or context used instead
-import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useRef } from 'react';
+import { Plus, CalendarDays, X, Download, Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { CATEGORY_META } from '@/lib/category-meta';
 import type { CategoryName } from '@/lib/category-meta';
 import type { FormData } from './types';
 
 import { useTransactions } from './hooks/useTransactions';
-import { Header } from './components/Header';
 import { StatsBar } from './components/StatsBar';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { TransactionList } from './components/TransactionList';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { PaymentModal } from './components/PaymentModal';
+import { ImportModal } from './components/ImportModal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 /* =======================
    Derived category lists
@@ -38,17 +38,35 @@ const incomeCategories = Object.entries(CATEGORY_META)
   }));
 
 /* =======================
+   Helpers
+======================= */
+
+/** Format "2026-03" → "Mar 2026" */
+function formatMonthLabel(ym: string) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1);
+  return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+/** Format "2026-03-14" → "14 Mar 2026" */
+function formatDateLabel(ymd: string) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/* =======================
    Component
 ======================= */
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const { expenses, addExpense, deleteExpense, markAsPaid, confirmExpense } = useTransactions();
+  const { expenses, addExpense, deleteExpense, markAsPaid, confirmExpense, bulkImport } = useTransactions();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [filter, setFilter] = useState<'all' | CategoryName>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
     'gpay' | 'phonepe' | 'paytm' | null
   >(null);
@@ -56,6 +74,8 @@ export default function HomePage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     amount: '',
@@ -66,35 +86,46 @@ export default function HomePage() {
   });
 
   /* =======================
-     Session Guard (client-side)
-     we no longer rely on next-auth; authentication state is stored in
-     localStorage by the login page and exposed via `useAuth`.
+     Filtered expenses (date or month)
   ======================= */
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  const filteredExpenses = useMemo(() => {
+    let result = expenses;
 
-  if (loading || !user) {
-    // show a spinner while we're determining authentication status
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+    // Date or month filter
+    if (selectedDate) {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      result = result.filter((e) => {
+        if (!e.date) return false;
+        const d = new Date(e.date);
+        return d.getFullYear() === year && d.getMonth() + 1 === month && d.getDate() === day;
+      });
+    } else {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      result = result.filter((e) => {
+        if (!e.date) return false;
+        const d = new Date(e.date);
+        return d.getFullYear() === year && d.getMonth() + 1 === month;
+      });
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      result = result.filter((e) => e.type === typeFilter);
+    }
+
+    return result;
+  }, [expenses, selectedMonth, selectedDate, typeFilter]);
 
   /* =======================
-     Calculations
+     Calculations (from filtered set)
   ======================= */
 
-  const totalExpenses = expenses
+  const totalExpenses = filteredExpenses
     .filter((e) => e.type === 'expense')
     .reduce((s, e) => s + e.amount, 0);
 
-  const totalIncome = expenses
+  const totalIncome = filteredExpenses
     .filter((e) => e.type === 'income')
     .reduce((s, e) => s + e.amount, 0);
 
@@ -103,7 +134,7 @@ export default function HomePage() {
   const categoryTotals = categories
     .map((cat) => ({
       ...cat,
-      total: expenses
+      total: filteredExpenses
         .filter((e) => e.type === 'expense' && e.category === cat.name)
         .reduce((sum, e) => sum + e.amount, 0),
     }))
@@ -127,7 +158,7 @@ export default function HomePage() {
     });
   };
 
-const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
+  const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
     if (!formData.amount) {
       alert('Enter amount first');
       return;
@@ -135,10 +166,8 @@ const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
 
     setSelectedPaymentMethod(method);
 
-    // Record the transaction as pending
     await markAsPaid(formData, method);
 
-    // Reset form & close modals
     setFormData({
       amount: '',
       category: 'Food',
@@ -151,35 +180,143 @@ const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
   };
 
   /* =======================
+     Export CSV
+  ======================= */
+
+  const handleExport = () => {
+    const rows = filteredExpenses.map((e) => ({
+      Date: e.date ? new Date(e.date).toLocaleDateString('en-IN') : '',
+      Type: e.type,
+      Category: e.category,
+      Amount: e.amount,
+      Note: e.note ?? '',
+      Status: e.paymentStatus,
+    }));
+    const header = Object.keys(rows[0] ?? {}).join(',');
+    const csv = [
+      header,
+      ...rows.map((r) => Object.values(r).map((v) => `"${v}"`).join(',')),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${selectedDate ?? selectedMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /* =======================
      Render
   ======================= */
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-0">
+    <div className="px-4 sm:px-6 py-4 sm:py-6">
 
-      <Header />
+        {/* ===== Toolbar ===== */}
+        <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
+          {/* Left group — date picker + type toggle */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Date / Month picker */}
+            <div className="inline-flex items-center gap-1">
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium transition-colors',
+                      'bg-secondary/50 hover:bg-accent text-foreground'
+                    )}
+                  >
+                    <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                    {selectedDate ? formatDateLabel(selectedDate) : formatMonthLabel(selectedMonth)}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={(() => {
+                      if (selectedDate) {
+                        const [y, m, d] = selectedDate.split('-').map(Number);
+                        return new Date(y, m - 1, d);
+                      }
+                      return undefined;
+                    })()}
+                    onSelect={(date) => {
+                      if (date) {
+                        const ym = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        setSelectedMonth(ym);
+                        setSelectedDate(ymd);
+                        setCalendarOpen(false);
+                      }
+                    }}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={(() => {
+                      const [y, m] = selectedMonth.split('-').map(Number);
+                      return new Date(y, m - 1);
+                    })()}
+                  />
+                </PopoverContent>
+              </Popover>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+              {selectedDate && (
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title="Show full month"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
 
-        {/* Desktop Dashboard Header */}
-        <div className="hidden sm:flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold">Dashboard</h2>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-secondary border border-border rounded-md px-3 py-2 text-sm"
-            />
+            {/* Type toggle — All / Expense / Income */}
+            <div className="inline-flex rounded-lg border border-border overflow-hidden">
+              {(['all', 'expense', 'income'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={cn(
+                    'px-3 py-2 text-xs font-medium transition-colors capitalize',
+                    typeFilter === t
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-accent'
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm"
-          >
-            <Plus className="w-5 h-5" />
-            Add Expense
-          </button>
+          {/* Right group — Export, Import, Add */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={filteredExpenses.length === 0}
+              className="p-2 rounded-lg border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Export CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="p-2 rounded-lg border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Import bank statement"
+            >
+              <Upload className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-primary text-primary-foreground px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Expense</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
         </div>
 
         <StatsBar
@@ -195,23 +332,13 @@ const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
         />
 
         <TransactionList
-          expenses={expenses}
+          expenses={filteredExpenses}
           filter={filter}
           setFilter={setFilter}
           categories={categories}
           onDelete={deleteExpense}
           onConfirm={confirmExpense}
         />
-
-      </div>
-
-      {/* Mobile FAB */}
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-6 right-6 sm:hidden bg-primary text-primary-foreground w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-50"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
 
       {showAddModal && (
         <AddTransactionModal
@@ -230,6 +357,13 @@ const handlePay = async (method: 'gpay' | 'phonepe' | 'paytm') => {
           amount={formData.amount}
           onPay={handlePay}
           onClose={() => setShowPaymentModal(false)}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportModal
+          onClose={() => setShowImportModal(false)}
+          onImport={bulkImport}
         />
       )}
 
