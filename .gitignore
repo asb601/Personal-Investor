@@ -73,7 +73,7 @@ coverage/
 *.pem
 
 # =========================
-# Server
+# Serveri am 
 # =========================
 .venv/
 __pycache__/

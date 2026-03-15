@@ -9,7 +9,6 @@ import type { FormData } from './types';
 
 import { useTransactions } from './hooks/useTransactions';
 import { StatsBar } from './components/StatsBar';
-import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { TransactionList } from './components/TransactionList';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { PaymentModal } from './components/PaymentModal';
@@ -332,10 +331,31 @@ export default function HomePage() {
           categoryTotals={categoryTotals}
         />
 
-        <CategoryBreakdown
-          categoryTotals={categoryTotals}
-          totalExpenses={totalExpenses}
-        />
+        {/* Compact category pills */}
+        {categoryTotals.length > 0 && (
+          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            {categoryTotals
+              .sort((a, b) => b.total - a.total)
+              .map((cat) => (
+                <button
+                  key={cat.name}
+                  onClick={() => setFilter(filter === cat.name ? 'all' : cat.name)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all shrink-0',
+                    filter === cat.name
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card text-foreground hover:bg-accent',
+                  )}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                  <span className="font-mono text-muted-foreground">
+                    ₹{cat.total.toLocaleString('en-IN')}
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
 
         <TransactionList
           expenses={filteredExpenses}
