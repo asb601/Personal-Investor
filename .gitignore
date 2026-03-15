@@ -8,7 +8,7 @@ Thumbs.db
 # Dependencies (ALL folders)
 # =========================
 node_modules/
-
+*.md
 # =========================
 # Environment files
 # =========================
@@ -73,7 +73,7 @@ coverage/
 *.pem
 
 # =========================
-# Server
+# Serveri am 
 # =========================
 .venv/
 __pycache__/

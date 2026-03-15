@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 
 const PAGE_TITLES: Record<string, string> = {
   '/home': 'Expenses',
+  '/home/analytics': 'Analytics',
   '/home/card-analytics': 'Card Analytics',
   '/home/stock-analytics': 'Stock Analytics',
 };

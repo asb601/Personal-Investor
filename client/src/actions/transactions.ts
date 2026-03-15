@@ -12,6 +12,7 @@ export async function addTransaction(data: {
   paymentMethod?: 'gpay' | 'phonepe' | 'paytm';
   paymentId?: string;
   paymentStatus?: 'pending' | 'confirmed';
+  cardId?: number | null;
 }) {
   const res = await fetch(`${API_URL}/transactions`, {
     method: "POST",
@@ -29,6 +30,7 @@ export async function addTransaction(data: {
       paymentMethod: data.paymentMethod,
       paymentId: data.paymentId,
       paymentStatus: data.paymentStatus ?? 'confirmed',
+      cardId: data.cardId ?? null,
     }),
   });
   if (!res.ok) {

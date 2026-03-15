@@ -7,6 +7,7 @@ import {
   Wallet,
   CreditCard,
   TrendingUp,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -25,6 +26,12 @@ const NAV_ITEMS = [
     href: '/home/card-analytics',
     icon: CreditCard,
     description: 'Credit & debit insights',
+  },
+  {
+    label: 'Analytics',
+    href: '/home/analytics',
+    icon: BarChart3,
+    description: 'Spending insights & trends',
   },
   {
     label: 'Stock Analytics',
@@ -122,7 +129,7 @@ export function Sidebar() {
 
       {/* ===== Mobile Bottom Tab Bar ===== */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border safe-area-bottom">
-        <div className="grid grid-cols-3 h-14">
+        <div className="grid grid-cols-4 h-14">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.href);
             return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Plus, CalendarDays, X, Download, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_META } from '@/lib/category-meta';
@@ -9,13 +9,13 @@ import type { FormData } from './types';
 
 import { useTransactions } from './hooks/useTransactions';
 import { StatsBar } from './components/StatsBar';
-import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { TransactionList } from './components/TransactionList';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { PaymentModal } from './components/PaymentModal';
 import { ImportModal } from './components/ImportModal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { getCards, type CardData } from '@/actions/cards';
 
 /* =======================
    Derived category lists
@@ -61,6 +61,11 @@ function formatDateLabel(ymd: string) {
 
 export default function HomePage() {
   const { expenses, addExpense, deleteExpense, markAsPaid, confirmExpense, bulkImport } = useTransactions();
+
+  const [cards, setCards] = useState<CardData[]>([]);
+  useEffect(() => {
+    getCards().then(setCards).catch(console.error);
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -326,10 +331,31 @@ export default function HomePage() {
           categoryTotals={categoryTotals}
         />
 
-        <CategoryBreakdown
-          categoryTotals={categoryTotals}
-          totalExpenses={totalExpenses}
-        />
+        {/* Compact category pills */}
+        {categoryTotals.length > 0 && (
+          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            {categoryTotals
+              .sort((a, b) => b.total - a.total)
+              .map((cat) => (
+                <button
+                  key={cat.name}
+                  onClick={() => setFilter(filter === cat.name ? 'all' : cat.name)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all shrink-0',
+                    filter === cat.name
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card text-foreground hover:bg-accent',
+                  )}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                  <span className="font-mono text-muted-foreground">
+                    ₹{cat.total.toLocaleString('en-IN')}
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
 
         <TransactionList
           expenses={filteredExpenses}
@@ -349,6 +375,7 @@ export default function HomePage() {
           onPayNow={() => setShowPaymentModal(true)}
           categories={categories}
           incomeCategories={incomeCategories}
+          cards={cards}
         />
       )}
 

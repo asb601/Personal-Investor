@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import settings
 from src.api.transactions import router as tx_router
 from src.api.auth import router as auth_router
+from src.api.cards import router as cards_router
 
 logger = logging.getLogger(__name__)
 
@@ -80,3 +81,4 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(tx_router)
+app.include_router(cards_router)

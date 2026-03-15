@@ -48,6 +48,7 @@ class TransactionCreate(_CamelModel):
     payment_method: Literal["gpay", "phonepe", "paytm"] | None = None
     payment_id: str | None = None
     payment_status: Literal["pending", "confirmed", "manual"] = "manual"
+    card_id: int | None = None
 
 
 class TransactionOut(_CamelModel):
@@ -61,6 +62,7 @@ class TransactionOut(_CamelModel):
     payment_method: str | None
     payment_id: str | None
     payment_status: str
+    card_id: int | None
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +93,7 @@ def list_transactions(
             payment_method=r.payment_method.value if r.payment_method else None,
             payment_id=r.payment_id,
             payment_status=r.payment_status.value,
+            card_id=r.card_id,
         )
         for r in rows
     ]
@@ -120,6 +123,7 @@ def create_transaction(
         payment_method=tx.payment_method,
         payment_id=tx.payment_id,
         payment_status=tx.payment_status,
+        card_id=tx.card_id,
     )
     db.add(new)
     db.commit()
@@ -138,6 +142,7 @@ def create_transaction(
         payment_method=new.payment_method.value if new.payment_method else None,
         payment_id=new.payment_id,
         payment_status=new.payment_status.value,
+        card_id=new.card_id,
     )
 
 
@@ -196,6 +201,7 @@ def confirm_transaction(
         payment_method=row.payment_method.value if row.payment_method else None,
         payment_id=row.payment_id,
         payment_status=row.payment_status.value,
+        card_id=row.card_id,
     )
 
 
@@ -274,6 +280,7 @@ def bulk_import_transactions(
             payment_method=r.payment_method.value if r.payment_method else None,
             payment_id=r.payment_id,
             payment_status=r.payment_status.value,
+            card_id=r.card_id,
         )
         for r in created
     ]
